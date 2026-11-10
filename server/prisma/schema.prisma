@@ -1,0 +1,144 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+}
+
+enum OnboardingStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AccountStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum EntryType {
+  DEBIT
+  CREDIT
+}
+
+model User {
+  id                  String       @id @default(cuid())
+  name                String
+  email               String       @unique
+  phone               String       @unique
+  passwordHash        String
+  role                UserRole     @default(USER)
+  status              UserStatus   @default(PENDING)
+  onboarding          Onboarding?
+  reviewedOnboardings Onboarding[] @relation("OnboardingReviewer")
+  accounts            Account[]
+  auditLogs           AuditLog[]   @relation("AuditActor")
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+}
+
+model Onboarding {
+  id           String           @id @default(cuid())
+  userId       String           @unique
+  user         User             @relation(fields: [userId], references: [id])
+  status       OnboardingStatus @default(PENDING)
+  reviewedById String?
+  reviewer     User?            @relation("OnboardingReviewer", fields: [reviewedById], references: [id])
+  remarks      String?
+  reviewedAt   DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+}
+
+model Account {
+  id                String          @id @default(cuid())
+  accountNumber     String          @unique
+  balance           Decimal         @default(0) @db.Decimal(18, 2)
+  currency          String          @default("INR")
+  status            AccountStatus   @default(PENDING)
+  userId            String
+  user              User            @relation(fields: [userId], references: [id])
+  sentTransactions  Transaction[]   @relation("FromAccount")
+  receivedTransactions Transaction[] @relation("ToAccount")
+  ledgerEntries     LedgerEntry[]
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([userId])
+}
+
+model Transaction {
+  id            String            @id @default(cuid())
+  reference     String            @unique
+  fromAccountId String
+  toAccountId   String
+  amount        Decimal           @db.Decimal(18, 2)
+  currency      String            @default("INR")
+  status        TransactionStatus @default(PENDING)
+  description   String?
+  fromAccount   Account           @relation("FromAccount", fields: [fromAccountId], references: [id])
+  toAccount     Account           @relation("ToAccount", fields: [toAccountId], references: [id])
+  ledgerEntries LedgerEntry[]
+  createdAt     DateTime          @default(now())
+
+  @@index([fromAccountId])
+  @@index([toAccountId])
+}
+
+model LedgerEntry {
+  id            String      @id @default(cuid())
+  transactionId String
+  accountId     String
+  entryType     EntryType
+  amount        Decimal     @db.Decimal(18, 2)
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+  account       Account     @relation(fields: [accountId], references: [id])
+  createdAt     DateTime    @default(now())
+
+  @@index([transactionId])
+  @@index([accountId])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json?
+  ipAddress String?
+  actor     User?    @relation("AuditActor", fields: [actorId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@index([actorId])
+  @@index([entity, entityId])
+}
+
+model DatabaseRole {
+  id          String   @id @default(cuid())
+  roleName    String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+}

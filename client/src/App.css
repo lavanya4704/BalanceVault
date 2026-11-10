@@ -1,0 +1,558 @@
+
+/* MAIN LAYOUT */
+
+.vault-page {
+  width: 100%;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 48% 52%;
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+/* LEFT PANEL */
+
+.brand-panel {
+  background:
+    radial-gradient(circle at 15% 20%, rgba(100, 150, 115, 0.16), transparent 35%),
+    radial-gradient(circle at 85% 85%, rgba(40, 105, 75, 0.18), transparent 40%),
+    #153f33;
+
+  color: #f4f6ec;
+  min-height: 100vh;
+  padding: 32px 17%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  position: relative;
+}
+
+/* BRAND HEADER */
+
+.brand-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-logo {
+  width: 27px;
+  height: 29px;
+  border-radius: 9px;
+  background: #e5edda;
+  color: #153f33;
+  display: grid;
+  place-items: center;
+  font-size: 23px;
+  font-weight: bold;
+}
+
+.brand-name {
+  font-family: Arial, sans-serif;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.secure-status {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: Arial, sans-serif;
+  font-size: 10px;
+}
+
+.status-dot,
+.ledger-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #9cc69e;
+}
+
+.status-dot {
+  box-shadow: 0 0 0 4px rgba(156, 198, 158, 0.12);
+}
+
+/* HERO CONTENT */
+
+.hero-content {
+  margin-top: auto;
+  margin-bottom: auto;
+  padding: 65px 0 30px;
+}
+
+.hero-eyebrow {
+  color: #c3d9a8;
+  font-family: Arial, sans-serif;
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  margin-bottom: 20px;
+}
+
+.hero-content h1 {
+  color: #f3f5ed;
+  font-size: clamp(38px, 4vw, 65px);
+  font-weight: 400;
+  line-height: 1.04;
+  letter-spacing: -2px;
+  margin-bottom: 18px;
+}
+
+.hero-content h1 em {
+  color: #c5d8aa;
+  font-weight: 400;
+}
+
+.hero-description {
+  max-width: 360px;
+  color: #d2e0d5;
+  font-family: Arial, sans-serif;
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+/* LEDGER ILLUSTRATION */
+
+.ledger-visual {
+  position: relative;
+  height: 230px;
+  width: min(100%, 440px);
+  margin-top: 22px;
+}
+
+.ledger-card {
+  position: absolute;
+  width: 225px;
+  height: 135px;
+  left: 32%;
+  top: 42px;
+  background: linear-gradient(140deg, #e2ebd0, #bfd1ad);
+  border-radius: 13px;
+  padding: 22px;
+  transform: rotate(-7deg);
+  box-shadow: 0 20px 35px rgba(0, 0, 0, 0.16);
+  z-index: 2;
+}
+
+.ledger-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #517462;
+  font-family: Arial, sans-serif;
+  font-size: 7px;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+.ledger-lines {
+  margin-top: 27px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ledger-lines span {
+  display: block;
+  height: 3px;
+  background: #a1b99d;
+  border-radius: 5px;
+}
+
+.ledger-lines span:nth-child(1) {
+  width: 42%;
+}
+
+.ledger-lines span:nth-child(2) {
+  width: 72%;
+}
+
+.ledger-lines span:nth-child(3) {
+  width: 57%;
+}
+
+.ledger-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 15px;
+  color: #517462;
+  font-family: Arial, sans-serif;
+  font-size: 7px;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+.shield {
+  font-size: 16px;
+}
+
+.orbit {
+  position: absolute;
+  border: 1px solid rgba(198, 220, 188, 0.17);
+  border-radius: 50%;
+  width: 300px;
+  height: 150px;
+  left: 22%;
+  top: 35px;
+}
+
+.orbit-one {
+  transform: rotate(15deg);
+}
+
+.orbit-two {
+  transform: rotate(-25deg);
+  width: 270px;
+  left: 25%;
+}
+
+.floating-tag {
+  position: absolute;
+  background: rgba(28, 72, 58, 0.85);
+  border: 1px solid rgba(201, 221, 199, 0.23);
+  border-radius: 8px;
+  padding: 10px;
+  color: #f3f5ed;
+  font-family: Arial, sans-serif;
+  font-size: 9px;
+  z-index: 3;
+}
+
+.verified {
+  top: 32px;
+  right: 2%;
+}
+
+.verified span {
+  color: #c6dba9;
+  margin-right: 7px;
+}
+
+.accountable {
+  bottom: 12px;
+  left: 20%;
+}
+
+.accountable span {
+  color: #c6dba9;
+  margin-right: 7px;
+}
+
+/* LEFT FOOTER */
+
+.brand-footer {
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px solid rgba(220, 235, 220, 0.17);
+  padding-top: 18px;
+  color: #a7c6b4;
+  font-family: Arial, sans-serif;
+  font-size: 9px;
+  gap: 15px;
+}
+
+/* RIGHT PANEL */
+
+.login-panel {
+  background: #f8f9f6;
+  min-height: 100vh;
+  padding: 55px 12%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.login-content {
+  width: 100%;
+  max-width: 420px;
+  margin-top: 0;
+}
+
+/* LOGIN HEADING */
+
+.login-eyebrow {
+  color: #427361;
+  font-family: Arial, sans-serif;
+  font-size: 9px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  margin-bottom: 18px;
+}
+
+.login-heading h2 {
+  color: #173c30;
+  font-size: clamp(29px, 2.5vw, 38px);
+  font-weight: 400;
+  letter-spacing: -1px;
+  margin-bottom: 10px;
+}
+
+.login-heading > p:last-child {
+  color: #929e96;
+  font-family: Arial, sans-serif;
+  font-size: 12px;
+}
+
+/* FORM */
+
+.login-form {
+  margin-top: 42px;
+}
+
+.form-group {
+  margin-bottom: 24px;
+}
+
+.form-group label {
+  display: block;
+  color: #254638;
+  font-family: Arial, sans-serif;
+  font-size: 11px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.form-group input {
+  width: 100%;
+  height: 49px;
+  padding: 0 14px;
+  border: 1px solid #dce4dd;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #173c30;
+  outline: none;
+  font-family: Arial, sans-serif;
+  font-size: 12px;
+}
+
+.form-group input::placeholder {
+  color: #a5b0a8;
+}
+
+.form-group input:focus {
+  border-color: #4b8069;
+  box-shadow: 0 0 0 3px rgba(75, 128, 105, 0.09);
+}
+
+.password-wrapper {
+  position: relative;
+}
+
+.password-wrapper input {
+  padding-right: 55px;
+}
+
+.eye-button {
+  position: absolute;
+  right: 14px;
+  top: 15px;
+  border: none;
+  background: none;
+  color: #71877b;
+  cursor: pointer;
+  font-size: 15px;
+}
+
+/* SIGN IN BUTTON */
+
+.signin-button {
+  width: 100%;
+  height: 50px;
+  border: none;
+  border-radius: 9px;
+  background: #205746;
+  color: white;
+  font-family: Arial, sans-serif;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 7px 15px rgba(32, 87, 70, 0.12);
+  transition: 0.2s;
+}
+
+.signin-button:hover {
+  background: #174535;
+}
+
+.signin-button span {
+  margin-left: 10px;
+  font-size: 16px;
+}
+
+/* SIGN UP */
+
+.signup-text {
+  margin-top: 28px;
+  text-align: center;
+  color: #87948c;
+  font-size: 11px;
+}
+
+.signup-text button {
+  border: none;
+  background: transparent;
+  color: #205746;
+  font-weight: bold;
+  cursor: pointer;
+  margin-left: 5px;
+  font-size: 11px;
+}
+
+/* SECURITY MESSAGE */
+
+.login-security {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 35px;
+  padding-top: 20px;
+  border-top: 1px solid #e4e9e4;
+}
+
+.lock-icon {
+  color: #6b957c;
+  font-size: 17px;
+}
+
+.login-security p {
+  color: #99a59d;
+  font-family: Arial, sans-serif;
+  font-size: 10px;
+  line-height: 1.7;
+}
+
+/* RIGHT FOOTER */
+
+.login-footer {
+  color: #a9b2ac;
+  font-family: Arial, sans-serif;
+  font-size: 9px;
+  text-align: center;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 900px) {
+  .vault-page {
+    grid-template-columns: 45% 55%;
+  }
+
+  .brand-panel {
+    padding: 28px 9%;
+  }
+
+  .login-panel {
+    padding: 45px 9%;
+  }
+
+  .ledger-card {
+    left: 22%;
+  }
+
+  .orbit {
+    left: 10%;
+  }
+
+  .verified {
+    right: 0;
+  }
+}
+
+@media (max-width: 650px) {
+  .vault-page {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .brand-panel {
+    min-height: 540px;
+    padding: 28px 25px;
+  }
+
+  .hero-content {
+    padding: 65px 0 25px;
+  }
+
+  .hero-content h1 {
+    font-size: 43px;
+  }
+
+  .ledger-visual {
+    max-width: 390px;
+  }
+
+  .ledger-card {
+    left: 22%;
+  }
+
+  .brand-footer {
+    font-size: 8px;
+  }
+
+  .login-panel {
+    min-height: 600px;
+    padding: 55px 25px 25px;
+  }
+
+  .login-content {
+    max-width: 440px;
+  }
+
+  .login-footer {
+    margin-top: 55px;
+  }
+}
+
+/* REGISTRATION PAGE */
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.login-form .form-group {
+  margin-bottom: 19px;
+}
+
+.login-form .signin-button {
+  margin-top: 5px;
+}
+
+.login-content:has(#confirmPassword) {
+  padding-top: 10px;
+}
+
+.login-content:has(#confirmPassword) .login-form {
+  margin-top: 25px;
+}
+
+.login-content:has(#confirmPassword) .login-heading h2 {
+  font-size: 32px;
+}
+
+.login-content:has(#confirmPassword) .form-group {
+  margin-bottom: 13px;
+}
+
+.login-content:has(#confirmPassword) .form-group input {
+  height: 44px;
+}
+
+.login-content:has(#confirmPassword) .eye-button {
+  top: 12px;
+}
+
+.login-content:has(#confirmPassword) .login-security {
+  margin-top: 22px;
+}
+
+@media (max-width: 650px) {
+  .login-content:has(#confirmPassword) {
+    padding-top: 0;
+  }
+}
