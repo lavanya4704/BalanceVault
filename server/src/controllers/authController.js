@@ -4,6 +4,31 @@ const jwt = require("jsonwebtoken");
 const { z } = require("zod");
 const prisma = require("../config/database");
 
+// Record audit activity without interrupting authentication
+const logAudit = async ({
+  actorId,
+  action,
+  entity,
+  entityId,
+  metadata,
+  ipAddress,
+}) => {
+  try {
+    await prisma.auditLog.create({
+      data: {
+        actorId,
+        action,
+        entity,
+        entityId,
+        metadata,
+        ipAddress,
+      },
+    });
+  } catch (error) {
+    console.error("Audit logging error:", error.message);
+  }
+};
+
 const registerSchema = z.object({
   name: z.string().trim().min(2),
   email: z.string().trim().email(),
@@ -69,6 +94,19 @@ const registerUser = async (req, res) => {
         status: true,
         createdAt: true,
       },
+    });
+
+    // Audit log: successful registration
+    await logAudit({
+      actorId: user.id,
+      action: "USER_REGISTERED",
+      entity: "USER",
+      entityId: user.id,
+      metadata: {
+        role: user.role,
+        status: user.status,
+      },
+      ipAddress: req.ip,
     });
 
     return res.status(201).json({
@@ -152,6 +190,19 @@ const loginUser = async (req, res) => {
       }
     );
 
+    // Audit log: successful login
+    await logAudit({
+      actorId: user.id,
+      action: "USER_LOGIN",
+      entity: "USER",
+      entityId: user.id,
+      metadata: {
+        role: user.role,
+        status: user.status,
+      },
+      ipAddress: req.ip,
+    });
+
     return res.status(200).json({
       success: true,
       message:
@@ -177,7 +228,47 @@ const loginUser = async (req, res) => {
   }
 };
 
+// GET CURRENT USER
+const getCurrentUser = async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: {
+        id: req.user.userId,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        status: true,
+        createdAt: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      user,
+    });
+  } catch (error) {
+    console.error("Get current user error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to retrieve user details.",
+    });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
+  getCurrentUser,
 };

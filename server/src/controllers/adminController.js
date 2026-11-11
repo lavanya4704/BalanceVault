@@ -113,9 +113,10 @@ const reviewUser = async (req, res) => {
           entity: "Onboarding",
           entityId: onboarding.id,
           metadata: {
-            reviewedUserId: userId,
-            remarks: remarks || null,
-          },
+  reviewedUserId: userId,
+  remarks: remarks || null,
+},
+ipAddress: req.ip,
         },
       });
 
@@ -136,8 +137,150 @@ const reviewUser = async (req, res) => {
     });
   }
 };
+// Add demo funds to an account (Admin only)
+const addDemoFunds = async (req, res) => {
+  try {
+    const validation = z.object({
+      amount: z.string().regex(/^\d+(\.\d{1,2})?$/),
+      remarks: z.string().trim().max(200).optional(),
+    }).safeParse(req.body);
 
+    if (!validation.success) {
+      return res.status(400).json({
+        success: false,
+        message: "Enter a valid amount with up to 2 decimal places",
+      });
+    }
+
+    const { amount, remarks } = validation.data;
+
+    if (Number(amount) <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Amount must be greater than zero",
+      });
+    }
+
+    // Verify current admin status from database
+    const admin = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: {
+        id: true,
+        role: true,
+        status: true,
+      },
+    });
+
+    if (!admin || admin.role !== "ADMIN" || admin.status !== "ACTIVE") {
+      return res.status(403).json({
+        success: false,
+        message: "Only active administrators can add demo funds",
+      });
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const account = await tx.account.findFirst({
+        where: {
+          accountNumber: req.params.accountNumber,
+          status: "ACTIVE",
+        },
+      });
+
+      if (!account) {
+        const error = new Error("Account not found or inactive");
+        error.code = "ACCOUNT_NOT_FOUND";
+        throw error;
+      }
+
+      const updatedAccount = await tx.account.update({
+        where: { id: account.id },
+        data: {
+          balance: {
+            increment: amount,
+          },
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          actorId: admin.id,
+          action: "DEMO_FUNDS_ADDED",
+          entity: "Account",
+          entityId: account.id,
+          metadata: {
+  amount,
+  currency: account.currency,
+  remarks: remarks || null,
+},
+ipAddress: req.ip,
+        },
+      });
+
+      return updatedAccount;
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Demo funds added successfully",
+      account: {
+        accountNumber: result.accountNumber,
+        balance: result.balance.toString(),
+        currency: result.currency,
+        status: result.status,
+      },
+    });
+  } catch (error) {
+    if (error.code === "ACCOUNT_NOT_FOUND") {
+      return res.status(404).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    console.error("Add demo funds error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to add demo funds",
+    });
+  }
+};
+// Get recent audit logs (Admin only)
+const getAuditLogs = async (req, res) => {
+  try {
+    const logs = await prisma.auditLog.findMany({
+      include: {
+        actor: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 100,
+    });
+
+    return res.status(200).json({
+      success: true,
+      count: logs.length,
+      logs,
+    });
+  } catch (error) {
+    console.error("Audit logs error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to retrieve audit logs",
+    });
+  }
+};
 module.exports = {
   getPendingUsers,
   reviewUser,
+  addDemoFunds,
+  getAuditLogs,
 };

@@ -169,5 +169,83 @@ const transferMoney = async (req, res) => {
     });
   }
 };
+// Get transaction history for the logged-in user
+// Get paginated transaction history
+const getMyTransactions = async (req, res) => {
+  try {
+    // Read pagination values from query parameters
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
 
-module.exports = { transferMoney };
+    const accounts = await prisma.account.findMany({
+      where: {
+        userId: req.user.userId,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    const accountIds = accounts.map((account) => account.id);
+
+    const where = {
+      OR: [
+        { fromAccountId: { in: accountIds } },
+        { toAccountId: { in: accountIds } },
+      ],
+    };
+
+    const [transactions, totalTransactions] = await Promise.all([
+      prisma.transaction.findMany({
+        where,
+        include: {
+          fromAccount: {
+            select: { accountNumber: true },
+          },
+          toAccount: {
+            select: { accountNumber: true },
+          },
+          ledgerEntries: {
+            select: {
+              entryType: true,
+              amount: true,
+              accountId: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+
+      prisma.transaction.count({ where }),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      pagination: {
+        currentPage: page,
+        pageSize: limit,
+        totalTransactions,
+        totalPages: Math.ceil(totalTransactions / limit),
+      },
+      count: transactions.length,
+      transactions,
+    });
+  } catch (error) {
+    console.error("Transaction history error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to retrieve transaction history",
+    });
+  }
+};
+
+
+module.exports = {
+  transferMoney,
+  getMyTransactions,
+};

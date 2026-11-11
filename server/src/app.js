@@ -1,6 +1,11 @@
+
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
+
+const prisma = require("./config/database");
+const { connectRedis } = require("./config/redis");
+const { apiLimiter } = require("./middleware/rateLimitMiddleware");
 
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
@@ -18,6 +23,10 @@ app.use(
 );
 
 app.use(express.json());
+// Apply rate limiting to all API endpoints
+app.use("/api", apiLimiter);
+
+// API routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/admin", adminRoutes);
@@ -65,6 +74,18 @@ app.get("/api/ready", async (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-  console.log(`BalanceVault server running on port ${PORT}`);
-});
+// Start server after connecting Redis
+const startServer = async () => {
+  try {
+    await connectRedis();
+
+    app.listen(PORT, () => {
+      console.log(`BalanceVault server running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error("Failed to start server:", error.message);
+    process.exit(1);
+  }
+};
+
+startServer();
