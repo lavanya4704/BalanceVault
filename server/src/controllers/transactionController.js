@@ -1,8 +1,10 @@
+
 const { randomUUID } = require("crypto");
 const { Prisma } = require("@prisma/client");
 const { z } = require("zod");
 const prisma = require("../config/database");
 
+// Transfer validation
 const transferSchema = z.object({
   fromAccountNumber: z.string().trim().min(1),
   toAccountNumber: z.string().trim().min(1),
@@ -13,6 +15,7 @@ const transferSchema = z.object({
   description: z.string().trim().max(200).optional(),
 });
 
+// Transfer money securely
 const transferMoney = async (req, res) => {
   try {
     const validation = transferSchema.safeParse(req.body);
@@ -48,6 +51,7 @@ const transferMoney = async (req, res) => {
       });
     }
 
+    // Verify sender ownership
     const sender = await prisma.account.findFirst({
       where: {
         accountNumber: fromAccountNumber,
@@ -63,6 +67,7 @@ const transferMoney = async (req, res) => {
       });
     }
 
+    // Verify recipient account
     const receiver = await prisma.account.findFirst({
       where: {
         accountNumber: toAccountNumber,
@@ -84,16 +89,22 @@ const transferMoney = async (req, res) => {
       });
     }
 
+    // Atomic transfer with double-entry ledger
     const result = await prisma.$transaction(async (tx) => {
-      // Atomically debit only if sufficient balance remains.
+
+      // Debit sender only when sufficient balance exists
       const debit = await tx.account.updateMany({
         where: {
           id: sender.id,
           status: "ACTIVE",
-          balance: { gte: transferAmount },
+          balance: {
+            gte: transferAmount,
+          },
         },
         data: {
-          balance: { decrement: transferAmount },
+          balance: {
+            decrement: transferAmount,
+          },
         },
       });
 
@@ -101,14 +112,24 @@ const transferMoney = async (req, res) => {
         throw new Error("INSUFFICIENT_BALANCE");
       }
 
-      // Credit the recipient.
-      await tx.account.update({
-        where: { id: receiver.id },
+      // Credit recipient only if still active
+      const credit = await tx.account.updateMany({
+        where: {
+          id: receiver.id,
+          status: "ACTIVE",
+        },
         data: {
-          balance: { increment: transferAmount },
+          balance: {
+            increment: transferAmount,
+          },
         },
       });
 
+      if (credit.count !== 1) {
+        throw new Error("RECEIVER_UNAVAILABLE");
+      }
+
+      // Create transaction record
       const transaction = await tx.transaction.create({
         data: {
           reference: `BV-${randomUUID()}`,
@@ -121,7 +142,7 @@ const transferMoney = async (req, res) => {
         },
       });
 
-      // Double-entry ledger: debit and credit.
+      // Double-entry ledger
       await tx.ledgerEntry.createMany({
         data: [
           {
@@ -153,11 +174,19 @@ const transferMoney = async (req, res) => {
         createdAt: result.createdAt,
       },
     });
+
   } catch (error) {
     if (error.message === "INSUFFICIENT_BALANCE") {
       return res.status(400).json({
         success: false,
         message: "Insufficient account balance",
+      });
+    }
+
+    if (error.message === "RECEIVER_UNAVAILABLE") {
+      return res.status(404).json({
+        success: false,
+        message: "Recipient account is no longer active",
       });
     }
 
@@ -169,14 +198,17 @@ const transferMoney = async (req, res) => {
     });
   }
 };
-// Get transaction history for the logged-in user
-// Get paginated transaction history
+
+// Get transaction history
 const getMyTransactions = async (req, res) => {
   try {
-    // Read pagination values from query parameters
     const page = Math.max(1, parseInt(req.query.page) || 1);
-    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
+    const limit = Math.min(
+      50,
+      Math.max(1, parseInt(req.query.limit) || 10)
+    );
 
+    // Find user's accounts
     const accounts = await prisma.account.findMany({
       where: {
         userId: req.user.userId,
@@ -190,8 +222,16 @@ const getMyTransactions = async (req, res) => {
 
     const where = {
       OR: [
-        { fromAccountId: { in: accountIds } },
-        { toAccountId: { in: accountIds } },
+        {
+          fromAccountId: {
+            in: accountIds,
+          },
+        },
+        {
+          toAccountId: {
+            in: accountIds,
+          },
+        },
       ],
     };
 
@@ -200,10 +240,14 @@ const getMyTransactions = async (req, res) => {
         where,
         include: {
           fromAccount: {
-            select: { accountNumber: true },
+            select: {
+              accountNumber: true,
+            },
           },
           toAccount: {
-            select: { accountNumber: true },
+            select: {
+              accountNumber: true,
+            },
           },
           ledgerEntries: {
             select: {
@@ -220,7 +264,9 @@ const getMyTransactions = async (req, res) => {
         take: limit,
       }),
 
-      prisma.transaction.count({ where }),
+      prisma.transaction.count({
+        where,
+      }),
     ]);
 
     return res.status(200).json({
@@ -234,6 +280,7 @@ const getMyTransactions = async (req, res) => {
       count: transactions.length,
       transactions,
     });
+
   } catch (error) {
     console.error("Transaction history error:", error);
 
@@ -243,7 +290,6 @@ const getMyTransactions = async (req, res) => {
     });
   }
 };
-
 
 module.exports = {
   transferMoney,

@@ -31,13 +31,13 @@ const logAudit = async ({
 
 const registerSchema = z.object({
   name: z.string().trim().min(2),
-  email: z.string().trim().email(),
+  email: z.string().trim().toLowerCase().email(),
   phone: z.string().trim().min(10),
   password: z.string().min(8),
 });
 
 const loginSchema = z.object({
-  email: z.string().trim().email(),
+  email: z.string().trim().toLowerCase().email(),
   password: z.string().min(1),
 });
 

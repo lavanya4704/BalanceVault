@@ -1,3 +1,4 @@
+
 const { z } = require("zod");
 const prisma = require("../config/database");
 
@@ -52,7 +53,9 @@ const reviewUser = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Status must be APPROVED or REJECTED",
-        errors: validation.error.issues.map((issue) => issue.message),
+        errors: validation.error.issues.map(
+          (issue) => issue.message
+        ),
       });
     }
 
@@ -84,7 +87,8 @@ const reviewUser = async (req, res) => {
       });
     }
 
-    const userStatus = status === "APPROVED" ? "ACTIVE" : "SUSPENDED";
+    const userStatus =
+      status === "APPROVED" ? "ACTIVE" : "SUSPENDED";
 
     const result = await prisma.$transaction(async (tx) => {
       const updatedOnboarding = await tx.onboarding.update({
@@ -107,16 +111,17 @@ const reviewUser = async (req, res) => {
       await tx.auditLog.create({
         data: {
           actorId: req.user.userId,
-          action: status === "APPROVED"
-            ? "USER_ONBOARDING_APPROVED"
-            : "USER_ONBOARDING_REJECTED",
+          action:
+            status === "APPROVED"
+              ? "USER_ONBOARDING_APPROVED"
+              : "USER_ONBOARDING_REJECTED",
           entity: "Onboarding",
           entityId: onboarding.id,
           metadata: {
-  reviewedUserId: userId,
-  remarks: remarks || null,
-},
-ipAddress: req.ip,
+            reviewedUserId: userId,
+            remarks: remarks || null,
+          },
+          ipAddress: req.ip,
         },
       });
 
@@ -137,6 +142,7 @@ ipAddress: req.ip,
     });
   }
 };
+
 // Add demo funds to an account (Admin only)
 const addDemoFunds = async (req, res) => {
   try {
@@ -171,7 +177,11 @@ const addDemoFunds = async (req, res) => {
       },
     });
 
-    if (!admin || admin.role !== "ADMIN" || admin.status !== "ACTIVE") {
+    if (
+      !admin ||
+      admin.role !== "ADMIN" ||
+      admin.status !== "ACTIVE"
+    ) {
       return res.status(403).json({
         success: false,
         message: "Only active administrators can add demo funds",
@@ -208,11 +218,11 @@ const addDemoFunds = async (req, res) => {
           entity: "Account",
           entityId: account.id,
           metadata: {
-  amount,
-  currency: account.currency,
-  remarks: remarks || null,
-},
-ipAddress: req.ip,
+            amount,
+            currency: account.currency,
+            remarks: remarks || null,
+          },
+          ipAddress: req.ip,
         },
       });
 
@@ -245,6 +255,7 @@ ipAddress: req.ip,
     });
   }
 };
+
 // Get recent audit logs (Admin only)
 const getAuditLogs = async (req, res) => {
   try {
@@ -278,6 +289,7 @@ const getAuditLogs = async (req, res) => {
     });
   }
 };
+
 module.exports = {
   getPendingUsers,
   reviewUser,
