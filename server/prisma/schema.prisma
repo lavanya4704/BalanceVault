@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -38,25 +37,39 @@ enum TransactionStatus {
   FAILED
 }
 
+enum TransactionType {
+  TRANSFER
+  WITHDRAWAL
+  DEPOSIT
+}
+
+enum DepositRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum EntryType {
   DEBIT
   CREDIT
 }
 
 model User {
-  id                  String       @id @default(cuid())
-  name                String
-  email               String       @unique
-  phone               String       @unique
-  passwordHash        String
-  role                UserRole     @default(USER)
-  status              UserStatus   @default(PENDING)
-  onboarding          Onboarding?
-  reviewedOnboardings Onboarding[] @relation("OnboardingReviewer")
-  accounts            Account[]
-  auditLogs           AuditLog[]   @relation("AuditActor")
-  createdAt           DateTime     @default(now())
-  updatedAt           DateTime     @updatedAt
+  id                      String           @id @default(cuid())
+  name                    String
+  email                   String           @unique
+  phone                   String           @unique
+  passwordHash            String
+  role                    UserRole         @default(USER)
+  status                  UserStatus       @default(PENDING)
+  onboarding              Onboarding?
+  reviewedOnboardings     Onboarding[]     @relation("OnboardingReviewer")
+  accounts                Account[]
+  depositRequests         DepositRequest[] @relation("DepositRequester")
+  reviewedDepositRequests DepositRequest[] @relation("DepositReviewer")
+  auditLogs               AuditLog[]       @relation("AuditActor")
+  createdAt               DateTime         @default(now())
+  updatedAt               DateTime         @updatedAt
 }
 
 model Onboarding {
@@ -73,18 +86,19 @@ model Onboarding {
 }
 
 model Account {
-  id                String          @id @default(cuid())
-  accountNumber     String          @unique
-  balance           Decimal         @default(0) @db.Decimal(18, 2)
-  currency          String          @default("INR")
-  status            AccountStatus   @default(PENDING)
-  userId            String
-  user              User            @relation(fields: [userId], references: [id])
-  sentTransactions  Transaction[]   @relation("FromAccount")
-  receivedTransactions Transaction[] @relation("ToAccount")
-  ledgerEntries     LedgerEntry[]
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
+  id                   String           @id @default(cuid())
+  accountNumber        String           @unique
+  balance              Decimal          @default(0) @db.Decimal(18, 2)
+  currency             String           @default("INR")
+  status               AccountStatus    @default(PENDING)
+  userId               String
+  user                 User             @relation(fields: [userId], references: [id])
+  sentTransactions     Transaction[]    @relation("FromAccount")
+  receivedTransactions Transaction[]    @relation("ToAccount")
+  ledgerEntries        LedgerEntry[]
+  depositRequests      DepositRequest[]
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
 
   @@index([userId])
 }
@@ -92,16 +106,19 @@ model Account {
 model Transaction {
   id            String            @id @default(cuid())
   reference     String            @unique
-  fromAccountId String
-  toAccountId   String
+  type          TransactionType   @default(TRANSFER)
+  fromAccountId String?
+  toAccountId   String?
   amount        Decimal           @db.Decimal(18, 2)
   currency      String            @default("INR")
   status        TransactionStatus @default(PENDING)
   description   String?
-  fromAccount   Account           @relation("FromAccount", fields: [fromAccountId], references: [id])
-  toAccount     Account           @relation("ToAccount", fields: [toAccountId], references: [id])
+
+  fromAccount Account? @relation("FromAccount", fields: [fromAccountId], references: [id])
+  toAccount   Account? @relation("ToAccount", fields: [toAccountId], references: [id])
+
   ledgerEntries LedgerEntry[]
-  createdAt     DateTime          @default(now())
+  createdAt     DateTime      @default(now())
 
   @@index([fromAccountId])
   @@index([toAccountId])
@@ -141,4 +158,26 @@ model DatabaseRole {
   roleName    String   @unique
   description String?
   createdAt   DateTime @default(now())
+}
+
+model DepositRequest {
+  id           String               @id @default(cuid())
+  userId       String
+  accountId    String
+  amount       Decimal              @db.Decimal(18, 2)
+  status       DepositRequestStatus @default(PENDING)
+  remarks      String?
+  reviewedById String?
+  reviewedAt   DateTime?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  user     User    @relation("DepositRequester", fields: [userId], references: [id])
+  account  Account @relation(fields: [accountId], references: [id])
+  reviewer User?   @relation("DepositReviewer", fields: [reviewedById], references: [id])
+
+  @@index([userId])
+  @@index([accountId])
+  @@index([status])
+  @@index([reviewedById])
 }

@@ -57,6 +57,7 @@ const startServer = async () => {
     app.use("/api/auth", authRoutes);
     app.use("/api/users", userRoutes);
     app.use("/api/admin", adminRoutes);
+    app.use("/api/deposits", require("./routes/depositRoutes"));
     app.use("/api/accounts", accountRoutes);
     app.use("/api/transactions", transactionRoutes);
 

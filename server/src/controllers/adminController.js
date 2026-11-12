@@ -45,9 +45,9 @@ const getPendingUsers = async (req, res) => {
 const reviewUser = async (req, res) => {
   try {
     const validation = z.object({
-      status: z.enum(["APPROVED", "REJECTED"]),
-      remarks: z.string().trim().max(500).optional(),
-    }).safeParse(req.body);
+  status: z.enum(["APPROVED", "REJECTED"]),
+  remarks: z.string().trim().max(200).optional(),
+}).safeParse(req.body);
 
     if (!validation.success) {
       return res.status(400).json({
@@ -147,7 +147,7 @@ const reviewUser = async (req, res) => {
 const addDemoFunds = async (req, res) => {
   try {
     const validation = z.object({
-      amount: z.string().regex(/^\d+(\.\d{1,2})?$/),
+      amount: z.string().trim().regex(/^\d+(\.\d{1,2})?$/),
       remarks: z.string().trim().max(200).optional(),
     }).safeParse(req.body);
 
@@ -256,6 +256,207 @@ const addDemoFunds = async (req, res) => {
   }
 };
 
+
+// Get pending deposit requests (Admin only)
+const getPendingDepositRequests = async (req, res) => {
+  try {
+    const admin = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: { role: true, status: true },
+    });
+
+    if (!admin || admin.role !== "ADMIN" || admin.status !== "ACTIVE") {
+      return res.status(403).json({
+        success: false,
+        message: "Only active administrators can view deposit requests",
+      });
+    }
+
+    const requests = await prisma.depositRequest.findMany({
+      where: { status: "PENDING" },
+      include: {
+        user: {
+          select: { id: true, name: true, email: true, phone: true },
+        },
+        account: {
+          select: { id: true, accountNumber: true, balance: true, currency: true, status: true },
+        },
+      },
+      orderBy: { createdAt: "asc" },
+    });
+
+    return res.status(200).json({
+      success: true,
+      count: requests.length,
+      requests: requests.map((request) => ({
+        ...request,
+        amount: request.amount.toString(),
+        account: {
+          ...request.account,
+          balance: request.account.balance.toString(),
+        },
+      })),
+    });
+  } catch (error) {
+    console.error("Pending deposit requests error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to retrieve deposit requests",
+    });
+  }
+};
+
+// Approve or reject a deposit request (Admin only)
+const reviewDepositRequest = async (req, res) => {
+  try {
+    const validation = z.object({
+      status: z.enum(["APPROVED", "REJECTED"]),
+      remarks: z.string().trim().max(200).optional(),
+    }).safeParse(req.body);
+
+    if (!validation.success) {
+      return res.status(400).json({
+        success: false,
+        message: "Status must be APPROVED or REJECTED",
+        errors: validation.error.issues.map((issue) => issue.message),
+      });
+    }
+
+    const { status, remarks } = validation.data;
+    const { requestId } = req.params;
+
+    const admin = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: { id: true, role: true, status: true },
+    });
+
+    if (!admin || admin.role !== "ADMIN" || admin.status !== "ACTIVE") {
+      return res.status(403).json({
+        success: false,
+        message: "Only active administrators can review deposit requests",
+      });
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const depositRequest = await tx.depositRequest.findUnique({
+        where: { id: requestId },
+        include: { account: true, user: { select: { id: true, name: true, email: true } } },
+      });
+
+      if (!depositRequest) {
+        const error = new Error("Deposit request not found");
+        error.code = "DEPOSIT_REQUEST_NOT_FOUND";
+        throw error;
+      }
+
+      // Conditional update prevents the same request from being processed twice.
+      const updated = await tx.depositRequest.updateMany({
+        where: { id: requestId, status: "PENDING" },
+        data: {
+          status,
+          remarks: remarks || depositRequest.remarks || null,
+          reviewedById: admin.id,
+          reviewedAt: new Date(),
+        },
+      });
+
+      if (updated.count !== 1) {
+        const error = new Error("This deposit request has already been reviewed");
+        error.code = "DEPOSIT_REQUEST_ALREADY_REVIEWED";
+        throw error;
+      }
+
+      let updatedAccount = depositRequest.account;
+
+      if (status === "APPROVED") {
+        if (depositRequest.account.status !== "ACTIVE") {
+          const error = new Error("The requested account is not active");
+          error.code = "DEPOSIT_ACCOUNT_INACTIVE";
+          throw error;
+        }
+
+        updatedAccount = await tx.account.update({
+          where: { id: depositRequest.accountId },
+          data: {
+            balance: { increment: depositRequest.amount },
+          },
+        });
+
+        const transaction = await tx.transaction.create({
+          data: {
+            reference: `BV-${require("crypto").randomUUID()}`,
+            type: "DEPOSIT",
+            fromAccountId: null,
+            toAccountId: depositRequest.accountId,
+            amount: depositRequest.amount,
+            currency: depositRequest.account.currency,
+            status: "COMPLETED",
+            description: remarks || depositRequest.remarks || "Deposit request approved",
+          },
+        });
+
+        await tx.ledgerEntry.create({
+          data: {
+            transactionId: transaction.id,
+            accountId: depositRequest.accountId,
+            entryType: "CREDIT",
+            amount: depositRequest.amount,
+          },
+        });
+      }
+
+      await tx.auditLog.create({
+        data: {
+          actorId: admin.id,
+          action: status === "APPROVED" ? "DEPOSIT_REQUEST_APPROVED" : "DEPOSIT_REQUEST_REJECTED",
+          entity: "DepositRequest",
+          entityId: depositRequest.id,
+          metadata: {
+            userId: depositRequest.userId,
+            accountId: depositRequest.accountId,
+            amount: depositRequest.amount.toString(),
+            currency: depositRequest.account.currency,
+            remarks: remarks || null,
+          },
+          ipAddress: req.ip,
+        },
+      });
+
+      return {
+        id: depositRequest.id,
+        status,
+        amount: depositRequest.amount.toString(),
+        accountNumber: depositRequest.account.accountNumber,
+        balance: updatedAccount.balance.toString(),
+      };
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: status === "APPROVED"
+        ? "Deposit request approved and account balance updated"
+        : "Deposit request rejected",
+      request: result,
+    });
+  } catch (error) {
+    if (error.code === "DEPOSIT_REQUEST_NOT_FOUND") {
+      return res.status(404).json({ success: false, message: error.message });
+    }
+    if (error.code === "DEPOSIT_REQUEST_ALREADY_REVIEWED") {
+      return res.status(409).json({ success: false, message: error.message });
+    }
+    if (error.code === "DEPOSIT_ACCOUNT_INACTIVE") {
+      return res.status(409).json({ success: false, message: error.message });
+    }
+
+    console.error("Review deposit request error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to review deposit request",
+    });
+  }
+};
+
 // Get recent audit logs (Admin only)
 const getAuditLogs = async (req, res) => {
   try {
@@ -294,5 +495,7 @@ module.exports = {
   getPendingUsers,
   reviewUser,
   addDemoFunds,
+  getPendingDepositRequests,
+  reviewDepositRequest,
   getAuditLogs,
 };
