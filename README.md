@@ -8,6 +8,17 @@
 - **Backend API:** https://balancevault-api-21sq.onrender.com/
 - **API Health Check:** https://balancevault-api-21sq.onrender.com/api/health
 
+## 🔐 Demo Admin Credentials
+
+For project evaluation and testing, admin login access is provided below.
+
+- **Application URL:** https://balance-vault-eosin.vercel.app/
+- **Role:** Administrator
+- **Email:** lavanya.demo@example.com
+- **Password:** [Shared separately with the evaluator]
+
+**Note:** These credentials are provided exclusively for demonstration and evaluation purposes. Please do not share them publicly or use them for real financial transactions.
+
 ## Features
 
 ### User Features
